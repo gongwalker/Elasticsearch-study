@@ -1,0 +1,131 @@
+Elasticsearch
+
+一、安装以及运行
+
+1、官网安装es
+2、运行es，到bin目录下
+	liunx		./elasticsearch
+	windows		elasticsearch.bat
+
+二、用法（自己封装curl方法）
+
+注：json_encode($data,JSON_FORCE_OBJECT)  构建json数据时需要加第二个参数,因为php空数据json完为[]，而es要{}，所以强制转换为对象
+
+
+1、添加一个文档,如果指定id存在，就是替换文档,_version版本号
+$query = ['name'=>'John Doe'];
+$json = json_encode($query,JSON_FORCE_OBJECT);
+//_type 是索引名称 _index是类型名称 _id是文档id
+curl('http://localhost:9200/_type/_index/_id?pretty','PUT',$json);
+
+
+2、获取某个文档  
+get('http://localhost:9200/_type/_index/_id');
+
+
+3、删除某个索引
+curl('http://localhost:9200/_type?pretty','DELETE');
+
+
+4、更新文档   post 比 put传输得数据少，查询文档，修改，重写生成都是在elasticsearch内部实现
+$query['doc'] = ['name'=>'John'];
+$json = json_encode($query,JSON_FORCE_OBJECT);
+curl('http://localhost:9200/customer/_update/1?pretty','POST',$json);
+
+
+5、批量操作
+//官方案例
+POST /customer/_bulk?pretty
+{"update":{"_id":"1"}}
+{"doc": { "name": "John Doe becomes Jane Doe" } }
+{"delete":{"_id":"2"}}
+
+
+$query[] = json_encode(['index'=>['_id'=>1]]);
+$query[] = json_encode(['name'=>'test']);
+//数组里是一维数组，json字符串，直接切割
+$json = implode("",$query);
+curl('http://localhost:9200/customer/_bulk?pretty','POST',$json);
+
+
+6、导入官方测试数据
+https://raw.githubusercontent.com/elastic/elasticsearch/master/docs/src/test/resources/accounts.json
+复制上面json内容，保存文件为accounts.json
+到accounts.json文件目录下执行
+curl -H "Content-Type: application/json" -XPOST "http://localhost:9200/bank/account/_bulk?pretty&refresh" --data-binary "@accounts.json"
+
+
+7、
+
+
+
+
+
+
+
+//匹配所有文档 account_number字段升序排序 
+// get('localhost:9200/bank/account/_search?q=*&sort=account_number:asc&pretty');
+
+
+
+// $query['query'] = ['match'=>['firstname'=>'a b']]; //包含a 或者 b
+// $query['query'] = ['match_phrase'=>['firstname'=>'a b']]; //短语搜索包含a b的
+
+// $query['size'] = 2;  //返回文档数
+// $query['from'] = 2;	//从什么地方开始
+// $query['_source'] = ['firstname']; //就只查这几个字段
+
+//bool组合更大逻辑的查询
+  //and 查询
+// $query['query']['bool']['must'][] = ['match'=>['age'=>34]]; 
+// $query['query']['bool']['must'][] = ['match'=>['firstname'=>'Chelsea']]; 
+//or 查询
+// $query['query']['bool']['should'][] = ['match'=>['age'=>34]]; 
+// $query['query']['bool']['should'][] = ['match'=>['firstname'=>'Chelsea']]; 
+
+
+//查询某个字段不为这个值
+// $query['query']['bool']['must_not'][] = ['match'=>['age'=>34]];
+
+//年龄为34 但是firstname不能为Chelsea
+// $query['query']['bool']['must'][] = ['match'=>['age'=>34]];
+// $query['query']['bool']['must_not'][] = ['match'=>['firstname'=>'Chelsea']];
+
+//age为34姓名为Chelsea 或者 年龄为32
+// $query['query']['bool']['should'][0]['bool']['must'][] = ['match'=>['age'=>'34']]; 
+// $query['query']['bool']['should'][0]['bool']['must'][] = ['match'=>['firstname'=>'Chelsea']]; 
+// $query['query']['bool']['should'][] = ['match'=>['age'=>32]];
+
+//过滤 filter 年龄小于34 大于30  全部文档 must 一维   过滤其他条件match 多维
+// $query['query']['bool']['must'] = ['match_all'=>[]];
+// $query['query']['bool']['filter'] = ['range'=>['age'=>['gte'=>30,'lte'=>34]]];
+
+//按年龄段聚合，在聚合每个年龄段的性别，在聚合每个年龄段下面的平均收入
+// $query['size'] = 0;
+// $query['aggs']['gruop_by_age']['range']['field'] = 'age'; 
+// $query['aggs']['gruop_by_age']['range']['ranges'][] = ['from'=>20,'to'=>30]; 
+// $query['aggs']['gruop_by_age']['range']['ranges'][] = ['from'=>30,'to'=>40]; 
+// $query['aggs']['gruop_by_age']['range']['ranges'][] = ['from'=>40,'to'=>50]; 
+// $query['aggs']['gruop_by_age']['aggs']['group_by_gender'] = ['terms'=>['field'=>'gender.keyword']];
+// $query['aggs']['gruop_by_age']['aggs']['group_by_gender']['aggs']['group_by_balance'] = ['avg'=>['field'=>'balance']];
+
+
+//导入数据自动生成id
+// $query = ["name"=>"小李","province"=>'莫斯科','nationality'=>'RUS'];
+// post('localhost:9200/wml_test/test',json_encode($query));
+
+
+设置es允许脚本执行：
+elasticsearch.yml 
+
+script.inline: true
+
+然后执行脚本
+
+复制代码
+POST linewell_assets_mgt_es/lw_devices/_update_by_query?conflicts=proceed
+{
+   "script":{
+        "lang":"painless",
+        "inline":"if (ctx._source.update_time== null) {ctx._source.
+update_time = '2018-01-01'}" } }
