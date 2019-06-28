@@ -1,0 +1,4 @@
+Mapping		比如text类型不支持query 和 aggs
+			映射成另外一个字段和类型 支持query 和 aggs
+			aa 原来是text
+			映射成 raw 成为另外一个字段另外一个类型
