@@ -91,3 +91,10 @@ $query['aggs']['gruop_by_age']['range']['ranges'][] = ['from'=>30,'to'=>40];
 $query['aggs']['gruop_by_age']['range']['ranges'][] = ['from'=>40,'to'=>50]; 
 $query['aggs']['gruop_by_age']['aggs']['group_by_gender'] = ['terms'=>['field'=>'gender.keyword']];
 $query['aggs']['gruop_by_age']['aggs']['group_by_gender']['aggs']['group_by_balance'] = ['avg'=>['field'=>'balance']];
+
+	//必须test为123  and  （proc_sha1 = 小写proc_sha1 or proc_sha1 = 大写 proc_sha1）
+$dsl['query']['bool']['must'][]['bool']['should'][] = [
+    ['term'=>['proc_sha1' =>strtolower($get['proc_sha1'])]],
+    ['term'=>['proc_sha1' =>strtoupper($get['proc_sha1'])]]
+];
+$dsl['query']['bool']['must'][] = ['term'=>['test' =>'123];
