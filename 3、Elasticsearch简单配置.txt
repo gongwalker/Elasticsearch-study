@@ -1,0 +1,46 @@
+一、elasticsearch.yml配置
+1、配置文件默认位置 config\elasticsearch.yml
+
+2、更新 数据和log存储位置  （重要的文件夹保留在其默认位置，则存在将Elasticsearch升级到新版本时被删除的高风险）
+path:
+  logs: /var/log/elasticsearch
+  data: /var/data/elasticsearch
+  
+也可以多个目录
+  path:
+  data:
+    - /mnt/elasticsearch_1
+    - /mnt/elasticsearch_2
+    - /mnt/elasticsearch_3
+	
+	
+3、cluster.name （集群名称）
+节点只能在群集与群集中的所有其他节点共享其cluster.name时才能加入群集
+cluster.name: logging-prod
+
+
+4、node.name
+默认情况下，Elasticsearch将使用随机生成的uuid的第一个字符作为节点id。 请注意，节点ID是持久化的，并且在节点重新启动时不会更改，因此默认节点名称也不会更改。
+node.name: prod-data-2
+
+
+二、安全配置  （待实践）
+有一些设置是敏感的，通过文件系统的权限来保护是不足够的。基于这种场景，elasticsearch提供了一个keystore，可以通过密码保护。elasticsearch-keystore就是用来管理与设置keystore的工具。
+
+1、创建keystore
+bin/elasticsearch-keystore create
+
+
+2、列出keystore的配置
+bin/elasticsearch-keystore list
+
+
+3、添加一个String设置
+一些敏感的字符串，像云平台插件的一个认真参数，可以通过add指令来添加：
+bin/elasticsearch-keystore add the.setting.name.to.set
+工具将提示这个值得设置。如果要通过控制台展示，使用--stdin参数：
+cat /file/containing/setting/value | bin/elasticsearch-keystore add --stdin the.setting.name.to.set
+
+
+4、删除设置
+bin/elasticsearch-keystore remove the.setting.name.to.remove

@@ -1,17 +1,25 @@
-Elasticsearch
-
-一、安装以及运行
-
-1、官网安装es
-2、运行es，到bin目录下
-	liunx		./elasticsearch
-	windows		elasticsearch.bat
-
-二、用法（自己封装curl方法）
-
 注：json_encode($data,JSON_FORCE_OBJECT)  构建json数据时需要加第二个参数,因为php空数据json完为[]，而es要{}，所以强制转换为对象
 
+注：响应体
+took - Elasticsearch 执行搜索的时间（毫秒）
+time_out - 告诉我们搜索是否超时
+_shards - 告诉我们多少个分片被搜索了，以及统计了成功/失败的搜索分片
+hits - 搜索结果
+hits.total - 搜索结果
+hits.hits - 实际的搜索结果数组（默认为前 10 的文档）
+sort - 结果的排序 key（键）（没有则按 score 排序）
+score 和max_score -现在暂时忽略这些字段
 
+_shards报头信息
+
+	指示应在其上执行索引操作的分片副本（主分片和副本分片）的数量。
+	total
+	
+	指示索引操作成功的分片副本数。
+	successful
+	
+	在副本分片上索引操作失败的情况下包含与复制相关的错误的数组。
+	failed
 1、添加一个文档,如果指定id存在，就是替换文档,_version版本号
 $query = ['name'=>'John Doe'];
 $json = json_encode($query,JSON_FORCE_OBJECT);
@@ -27,7 +35,7 @@ get('http://localhost:9200/_type/_index/_id');
 curl('http://localhost:9200/_type?pretty','DELETE');
 
 
-4、更新文档   post 比 put传输得数据少，查询文档，修改，重写生成都是在elasticsearch内部实现
+4、更新文档
 $query['doc'] = ['name'=>'John'];
 $json = json_encode($query,JSON_FORCE_OBJECT);
 curl('http://localhost:9200/customer/_update/1?pretty','POST',$json);
@@ -49,10 +57,11 @@ $query['query'] = ['match'=>['firstname'=>'a b']];
 $query['query'] = ['match_phrase'=>['firstname'=>'a b']];
 
 
-8、size 返回文档数，0不返回文档，from从第几个文档开始，_source 可以规定返回文档的字段，减少网络开销
+8、size 返回文档数，0不返回文档，from从第几个文档开始，_source 可以规定返回文档的字段，减少网络开销    sort 排序
 $query['size'] = 2;
 $query['from'] = 2;
 $query['_source'] = ['firstname'];
+"sort": { "字段": { "order": "desc" } }
 
 9、bool组合更大逻辑的查询
 	//and 查询 age = 24 and firstname = Chelsea
@@ -79,9 +88,11 @@ $query['query']['bool']['should'][0]['bool']['must'][] = ['match'=>['age'=>'34']
 $query['query']['bool']['should'][0]['bool']['must'][] = ['match'=>['firstname'=>'Chelsea']]; 
 $query['query']['bool']['should'][] = ['match'=>['age'=>32]];
 
+
 	//过滤 filter 年龄小于34 大于30 可以must[]组合查询在过滤
 $query['query']['bool']['must'] = ['match_all'=>[]];
 $query['query']['bool']['filter'] = ['range'=>['age'=>['gte'=>30,'lte'=>34]]];
+
 
 	//按年龄段聚合，在聚合每个年龄段的性别，在聚合每个年龄段下面的平均收入
 $query['size'] = 0;
@@ -92,9 +103,31 @@ $query['aggs']['gruop_by_age']['range']['ranges'][] = ['from'=>40,'to'=>50];
 $query['aggs']['gruop_by_age']['aggs']['group_by_gender'] = ['terms'=>['field'=>'gender.keyword']];
 $query['aggs']['gruop_by_age']['aggs']['group_by_gender']['aggs']['group_by_balance'] = ['avg'=>['field'=>'balance']];
 
+
 	//必须test为123  and  （proc_sha1 = 小写proc_sha1 or proc_sha1 = 大写 proc_sha1）
 $dsl['query']['bool']['must'][]['bool']['should'][] = [
     ['term'=>['proc_sha1' =>strtolower($get['proc_sha1'])]],
     ['term'=>['proc_sha1' =>strtoupper($get['proc_sha1'])]]
 ];
 $dsl['query']['bool']['must'][] = ['term'=>['test' =>'123];
+
+
+10、模拟批量导入 每个请求后面要加\n
+$index[] = "{\"index\":{\"_index\":\"br8-2019-3-13\",\"_type\":\"br\"}}\n";
+$index[] = "{\"test\":\"title_test\"}\n";
+$test = implode("",$index);
+post('localhost:9200/_bulk',$test);
+
+
+11、查询字段不为空的， 返回字段存在并且不为null的
+$query['query'] = ['constant_score'=>['filter'=>["exists"=>['field'=>'name']]]];
+
+
+12、查询字段不为空的， 返回字段存在并且不为null的
+$query['query'] = ['constant_score'=>['filter'=>["exists"=>['field'=>'name']]]];
+
+
+13、查询为空的字段
+$query['query']['bool']['must_not'] = ['constant_score'=>['filter'=>["exists"=>['field'=>'name']]]];
+
+https://www.cnblogs.com/didda/p/5485681.html  待总结 url

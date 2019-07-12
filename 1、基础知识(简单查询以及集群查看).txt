@@ -1,0 +1,55 @@
+1、查看集群状态
+curl -XGET 'localhost:9200/_cat/health?v&pretty'
+
+	Green 表示一切正常（集群功能齐全） 
+	yellow 表示所有数据可用，但是有些副本尚未分配（集群功能齐全）
+	red 意味着由于某些原因有些数据不可用。
+	注意，集群是 red，它仍然具有部分功能（例如，它将继续从可用的分片中服务搜索请求），但是您可能需要尽快去修复它，因为您已经丢失数据了。
+
+	
+2、列出所有索引
+curl -XGET 'localhost:9200/_cat/indices?v&pretty'
+
+
+3、创建索引
+curl -XPUT 'localhost:9200/customer?pretty&pretty'
+
+注：index/update/delete 数据时到搜索结果中出现会有 1 秒的延迟（刷新间隔）
+
+4、添加（替换）  文档到索引中   （put更新整个文档）
+curl -H 'Content-type':'application/json' -XPUT 'localhost:9200/customer/external/1?pretty&pretty' -d'
+{
+  "name": "John Doe"
+}'
+
+
+5、删除索引（只能删除索引 不能删除具体类型）
+curl  -XDELETE 'localhost:9200/customer?pretty&pretty'
+
+
+6、更新文档
+curl -H 'Content-type':'application/json' -XPOST 'localhost:9200/customer/external/1/_update?pretty&pretty' -d'
+{
+  "doc": { "age": 20 }
+}'
+
+
+7、删除文档
+curl -XDELETE 'localhost:9200/customer/external/2?pretty&pretty'
+
+
+8、批量处理
+//更新 id 1 删除id 2
+curl -XPOST 'localhost:9200/customer/external/_bulk?pretty&pretty' -d'
+{"update":{"_id":"1"}}
+{"doc": { "name": "John Doe becomes Jane Doe" } }
+{"delete":{"_id":"2"}}
+'
+
+//批量导入
+$index[] = "{\"index\":{\"_index\":\"br8-2019-3-13\",\"_type\":\"br\"}}\n";
+$index[] = "{\"test\":\"title_test\"}\n";
+$test = implode("",$index);
+post('localhost:9200/_bulk',$test);
+
+

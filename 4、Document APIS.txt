@@ -1,0 +1,157 @@
+﻿一、Index API
+1、插入文档
+curl -XPUT 'localhost:9200/twitter/tweet/1?pretty' -H 'Content-Type: application/json' -d'
+{
+    "user" : "kimchy",
+    "post_date" : "2009-11-15T14:12:12",
+    "message" : "trying out Elasticsearch"
+}
+'
+
+注：如果索引操作尚未创建，则索引操作自动创建索引
+
+
+2、version 版本控制（乐观并发控制，指定版本号，如果版本号改动就失败）
+curl -XPUT 'localhost:9200/twitter/tweet/1?version=2&pretty' -H 'Content-Type: application/json' -d'
+{
+    "message" : "elasticsearch now has versioning support, double cool!"
+}
+'
+
+
+3、Routing（直接通过计算hash值，发送到分片）
+curl -XPOST 'localhost:9200/twitter/tweet?routing=kimchy&pretty' -H 'Content-Type: application/json' -d'
+{
+    "user" : "kimchy",
+    "post_date" : "2009-11-15T14:12:12",
+    "message" : "trying out Elasticsearch"
+}
+'
+注：设置 up explicit mapping( 显式映射 ) 时，可以选择使用 _routing 字段来指示索引操作从文档本身提取路由值。
+
+
+二、Update API
+1、给count 加4
+POST test/type1/1/_update
+{
+    "script" : {
+        "inline": "ctx._source.counter += params.count",
+        "lang": "painless",
+        "params" : {
+            "count" : 4
+        }
+    }
+}
+
+2、添加标签
+POST test/type1/1/_update
+{
+    "script" : {
+        "inline": "ctx._source.tags.add(params.tag)",
+        "lang": "painless",
+        "params" : {
+            "tag" : "blue"
+        }
+    }
+}
+
+4、添加新字段
+POST test/type1/1/_update
+{
+    "script" : "ctx._source.new_field = \"value_of_new_field\""
+}
+
+
+5、删除字段
+POST test/type1/1/_update
+{
+    "script" : "ctx._source.remove(\"new_field\")"
+}
+
+
+6、这个例子就是删除文档，如果 tags包含 green，否则就什么也不做（noop）
+POST test/type1/1/_update
+{
+    "script" : {
+        "inline": "if (ctx._source.tags.contains(params.tag)) { ctx.op = \"delete\" } else { ctx.op = \"none\" }",
+        "lang": "painless",
+        "params" : {
+            "tag" : "green"
+        }
+    }
+}
+
+
+
+三、_update_by_query （delete_by_query 查询删除）
+1、查询并用script脚本更新
+$query['query']['bool']['must'][] = ['term' => ['tag.keyword' => $tag]];
+$query['query']['bool']['must'][] = ['term' => ['rank' => $rank]];
+$query['script'] = ['source' => 'ctx._source.hash_all.add(params.hash)', 'lang' => 'painless', 'params' => ['hash' => $hash]];
+
+
+
+四、Mget
+1、index type id
+curl 'localhost:9200/_mget' -d '{
+    "docs" : [
+        {
+            "_index" : "test",
+            "_type" : "type",
+            "_id" : "1"
+        },
+        {
+            "_index" : "test",
+            "_type" : "type",
+            "_id" : "2"
+        }
+    ]
+}'
+
+
+2、type id
+curl 'localhost:9200/test/_mget' -d '{
+    "docs" : [
+        {
+            "_type" : "type",
+            "_id" : "1"
+        },
+        {
+            "_type" : "type",
+            "_id" : "2"
+        }
+    ]
+}'
+
+3、id
+curl 'localhost:9200/test/type/_mget' -d '{
+    "docs" : [
+        {
+            "_id" : "1"
+        },
+        {
+            "_id" : "2"
+        }
+    ]
+}'
+也可以通过这样
+curl 'localhost:9200/test/type/_mget' -d '{
+    "ids" : ["1", "2"]
+}'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
