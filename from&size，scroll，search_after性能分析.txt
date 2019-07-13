@@ -1,0 +1,79 @@
+一、"search_after"是什么？
+
+     “search_after”是用于查询的dsl，可以起到类似"from & size"分页作用的结构化查询，代码展示如下：
+
+GET twitter/_search
+{
+    "size": 10,
+    "query": {
+        "match" : {
+            "title" : "elasticsearch"
+        }
+    },
+    "search_after": [1000],
+    "sort": [
+        {"date": "asc"},
+        {"tie_breaker_id": "asc"}
+    ]
+}
+        上述语句的含义在于，查询第1000～1010条语句，可以看做另外一种from size分页。
+
+ 
+
+二、为什么使用“search_after”?
+
+      参看之前的文章，分页查询通过from & size，scroll 都可以实现。但是这两种方式都有各自的弊端，比如“Pagination of results can be done by using the from and size but the cost becomes prohibitive when the deep pagination is reached. The index.max_result_window which defaults to 10,000 is a safeguard, search requests take heap memory and time proportional to from + size. The Scroll api is recommended for efficient deep scrolling but scroll contexts are costly and it is not recommended to use it for real time user requests. ”
+
+       可归纳为亮点：
+
+       1、from size，深度分页或者size特别大的情况，会出deep pagination问题；且es的自保机制max_result_window也会阻预设的查询。
+
+       2、scroll虽然能够解决from size带来的问题，但是由于它代表的是某个时刻的snapshot，不适合做实时查询；且由于scroll后接超时时间，频繁地发起scroll请求，也会出现一系列问题。
+
+      此时，search_after恰巧能够解决scroll的非实时取值问题。
+
+ 
+
+三、form&size / scroll / search_after 性能比较
+
+      假设执行如下查询：
+
+GET twitter/_search
+{
+    "query": {
+        "match" : {
+            "title" : "elasticsearch"
+        }
+    }
+}
+      分别分页获取【1 - 10】【49000 - 49010】【 99000 - 99010】范围各10条数据（前提10w条），性能大致是这样：
+
+es分页性能对比表
+分页方式	1～10	49000～49010	99000～99010
+form…size	8ms	30ms	117ms
+scroll	7ms	66ms	36ms
+search_after	5ms	8ms	7ms
+ 
+
+      note：该数据并非博主本人测试，是公司wiki里负责es的同事的实验结果。
+
+      由此可知，超级深的分页，使用search_after最为合适了，from&size方式，列表查询已经够了（一般人的操作部分查看第20页之后的数据），导出列表可以使用scroll。
+
+      对于三者的原理：
+
+       (1) from / size : 该查询的实现原理类似于mysql中的limit，比如查询第10001条数据，那么需要将前面的10000条都拿出来，进行过滤，最终才得到数据。(性能较差，实现简单，适用于少量数据，数据量不超过10w)。
+       (2) scroll：该查询实现类似于消息消费的机制，首次查询的时候会在内存中保存一个历史快照以及游标(scroll_id)，记录当前消息查询的终止位置，下次查询的时候将基于游标进行消费(性能良好，维护成本高，在游标失效前，不会更新数据，不够灵活，一旦游标创建size就不可改变，适用于大量数据导出或者索引重建)
+       (3) search_after: 性能优秀，类似于优化后的分页查询，历史条件过滤掉数据。
+
+      
+
+四、注意事项
+
+      1.使用search_after查询，from参数设置为0或者-1.
+
+      2.search_after is not a solution to jump freely to a random page but rather to scroll many queries in parallel. It is very similar to the scroll API but unlike it, the search_after parameter is stateless, it is always resolved against the latest version of the searcher. For this reason the sort order may change during a walk depending on the updates and deletes of your index. 意思就是说随机地跳跃分页，search_after的支持没有scroll好。
+--------------------- 
+作者：暂7师师长常乃超 
+来源：CSDN 
+原文：https://blog.csdn.net/zzh920625/article/details/84593590 
+版权声明：本文为博主原创文章，转载请附上博文链接！

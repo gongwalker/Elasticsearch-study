@@ -1,0 +1,11 @@
+1、一条语句多次查询
+curl -H "Content-Type: application/json" -XPOST "http://localhost:9200/_msearch?pretty" -d '
+{"index" : "bank"}
+{ "query": { "match": { "firstname" : "Amber" } } } }
+{"index" : "bank"}
+{ "query": { "match": { "firstname" : "Hattie" } } }
+
+'
+
+
+2、
