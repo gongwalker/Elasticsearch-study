@@ -1,0 +1,210 @@
+正排索引：文档id到文档内容、单词的关联关系
+文档1  elasticsearch是最流行的搜索引擎
+文档2  php是时间上最好的语言
+文档3  搜索引擎是如何诞生的
+
+
+
+倒排索引：单词到文档的关系
+单词			文档
+elasticsearch  	1
+流行			1
+搜索引擎		1，3
+php 			2
+一、倒排索引和正排索引
+倒排索引是对分档进行分词产生的
+
+查询流程
+查询包含 “搜索引擎”
+通过倒排得到文档 1 和 3
+在通过正排索引得到 1和 3的完整内容
+返回查询结果
+
+倒排索引是搜索引擎的核心，主要包含 单词词典（Term Dictionary） 和倒排列表（Posting List）
+
+
+单词词典（B+tree）：记录文档的单词，随着文档增加而增加，记录单词到倒排列表的关联信息（单词关联的文档id）
+
+倒排索引项（Posting）
+文档id，用于获取原始信息
+单词频率，相关性打分
+位置，记录单词在文档中的分词位置，用于词语搜索，比如苹果手机，返回苹果在手机前面的文档？？？
+偏移，记录单词在文档的开始和结束位置，做高亮显示，在这个词，在这个字符串的位置
+
+二、分词
+分词器（Analyzer）
+组成以及调用顺序
+Character Filters 针对原始文本进行处理，去除html特殊标记
+Tokenizer	将原始文本按照一定规则切分为单词
+Token Filters 将Tokenizer处理的单词再加工，比如转小写、删除、新增等处理
+
+
+三、Analyze API
+1、分词器测试
+POST _analyze
+{
+"anzlyzer":"standard",  注：standard是es自带的分词器
+"text":"hello world!"
+}
+返回分词结果，偏移，分词位置信息等
+
+
+//针对索引做分词器测试
+POST test_index/_analyze
+{
+"field":"username",  注：standard是es自带的分词器
+"text":"hello world!"
+}
+返回分词结果，偏移，分词位置信息等
+
+
+//自定义分词器测试
+POST _analyze
+{
+"tokenizer":"standard",  注：standard是es自带的分词器
+"filter":["lowercase"],
+"text":"hello world!"
+}
+
+
+
+2、Character Filters测试
+POST _analyze
+{
+"tokenizer":"keyword",  注：不分词
+"char_filter":["html_strip"],
+"text":"hello world!"
+}
+
+
+
+3、Tokenizer测试
+一定规则切割单词  （？？规则网上查询）
+POST _analyze
+{
+"tokenizer":"standard",  注：standard是es自带的分词器
+"text":"hello world!"
+}
+
+
+
+4、自定义Token Filters
+PUT test_index
+{
+	"mapping":{
+		"doc":{
+			"properties":{
+				"title":{
+					"type":"text",
+					"fields":{
+						"test"{
+							"type":"keyword"
+						}
+					}
+					//"analyze":"whitespace",    注，添加时分词
+					//"search_analyzer":"standard"   注，查询时分词方式
+				}
+			}
+		}
+	}
+}
+
+
+四、elasticsearch 自带的分词器
+1、Standard  
+tokenizer 			Standard
+Token Filters		standard  Lower Case（小写）  stop word（去除 一些stop words）
+按词切分
+
+2、Simple
+tokenizer			Lower Case
+按照非字母切分  The 2 Quick A-B 会切分成 the,quick,a,b
+
+
+3、Whitespace
+tokenizer  Whitespace
+按照空格切分
+
+
+4、Stop
+tokenizer  			Lower Case
+Token Filters		stop word  （想the 之类的助词就没有了）
+
+
+5、Keyword
+tokenizer			Keyword
+不分词，怎么进来的怎么输出
+
+
+6、Pattern
+tokenizer			Pattern
+Token Filters		Lower Case		stop
+通过正则表达式自定义分割符号
+默认是\W+,非字典符号
+
+
+7、language
+ 
+
+8、中文分词
+https://mp.weixin.qq.com/s/SiHSMrn8lxCmrtHbcwL-NQ
+IK
+jieba
+
+
+五、索引分词
+put test_index
+
+
+备注：创建更新文档时会分词   或者   查询时分词
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
