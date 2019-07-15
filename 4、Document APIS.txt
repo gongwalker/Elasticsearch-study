@@ -91,6 +91,18 @@ $query['script'] = ['source' => 'ctx._source.hash_all.add(params.hash)', 'lang' 
 
 
 
+2、去除tag标签里的某个值
+curl -H 'Content-Type:application/json' -XPOST 'http://localhost:9200/test_index/test_type/1/_update' -d '
+{
+    "script": {
+        "inline": "ctx._source.tags.remove(ctx._source.tags.indexOf(params.tag))",
+        "params": {
+            "tag": "test1"
+        }
+    }
+}
+'
+
 四、Mget
 1、index type id
 curl 'localhost:9200/_mget' -d '{
