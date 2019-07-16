@@ -1,0 +1,129 @@
+1、不同集群通过集群名字区分，通过cluster.name 修改
+2、每个es实例是JVM进程，有自己的名字，通过node.name修改（部分节点停止，也能正常服务）
+
+3、cerebro安装 github
+
+4、bin/elasticearch -Ecluster.name=my_cluster -Epath.data=my_cluster_node1 -Enode.name=node1 Ehttp.port=5200 -d
+
+
+5、node.master:true 可以推选为主节点   默认是true
+coordination节点：处理请求节点
+data节点，存储数据的节点   node.data:true
+
+
+6、创建新节点 
+bin/elasticearch -Ecluster.name=my_cluster -Epath.data=my_cluster_node2 -Enode.name=node2 Ehttp.port=5300 -d
+node名称 和 存储数据路径 端口要改变
+
+
+7、系统可用性
+服务可用性：创建多节点，其中一个节点停止还是可以对外提供服务
+数据可用性：引入副本，每个节点上都有完备的数据
+
+
+8、分片
+分片存储部分数据，可以分布任意节点上
+分片数在创建索引时间制定，后续不能修改，默认为5
+分片有主分片和副分片，提高数据高可用
+副分片由主分片同步，可以有多个，提高系统吞吐
+
+如果一开始确定3个分片，增加新的节点时，新的节点无法利用
+
+分片数过小，无法用过水平扩容，过大资源浪费，影响查询性能
+
+
+9、集群状态
+GET _cluster/health
+green 	主副分片都正常分配
+yellow	主分片都正常，副分片未正常分配
+red		有主分片未分配
+
+
+10、故障转移
+当有一个节点挂掉的时候，会自动生成一个主节点
+
+
+11、文档分布式存储
+文档均匀的分布到分片上
+算法 hsard = hash（routing）%number_of_primary_shards
+
+
+12、脑裂问题
+node1 主机点 网络问题下线， node2被推选为主节点。node1此时修好网络重新上线
+
+quorum = master-aligible（有资格推选为节点数）/2+1
+设置discovery.minimum_master_nodes 
+
+
+13、shard
+倒排索引生成不能改变（倒排索引文件）
+	不用考虑并发写文件
+	文件不再更改，只需要载入一次缓存
+	利于生存缓存数据
+	利于文件压缩，节省磁盘和内存存储空间
+
+坏处：写入新文档时，必须重新构建倒排索引，换老文件，实时性差
+
+解决方案：创建倒排索引2，同时查询倒排索引1和2
+
+
+Lucene建立的单个倒排索引文件称为segment，合在一起称之为Index。
+ES的一个Shard对应Lucenne的Index
+Lucene会有专门的文件记录所有的segment信息，成为commit point
+
+
+refresh：
+现在segment现在缓存中创建并开放，提升文档的实时性
+refresh之前文档会存储在一个buffer，refresh将buffer所有文档清空，生产segment
+
+默认时1秒执行一次refresh，索引称之为近实时性的原因
+
+
+translog:
+segment没有写入磁盘前发生宕机，写入文档到buffer时，同时操作写入translog
+每次都写入磁盘。6.0以上每次请求都写入
+可以修改 index.translog
+es启动会检查translog文件，并恢复数据
+
+
+
+flush将内存中的segment写入磁盘中
+将translog写入磁盘
+将index buffer情况，生产新的segment，相当于refresh
+更新commit point并写入segment
+删除旧的translog文件
+
+
+Segment Merging
+segment的增多，查询的segment数量变多，查询速度就会变慢
+es会定时做segment merge
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

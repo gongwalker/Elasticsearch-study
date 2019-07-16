@@ -1,4 +1,92 @@
-1、一条语句多次查询
+1、index设置格式
+GET /_search
+GET /my_index/_search
+GET /my_index1,my_index2/_search
+GET /my_*/_search
+
+2、term phrase
+phrase: 查a b，就是 a or b
+term: 词语查询，要求先后顺寻 
+
+3、uri 查询(字符串查询)
+GET /my_index/_search?q=value 	//泛查询 
+
+GET /my_index/_search?q=value&df=field&sort=age:asc&from=1&size=10&timeout=1s
+
+GET /my_index/_search?q=field:a b //查询 满足 a 或者 b的文档
+
+GET /my_index/_search?q=field:"a b" //词语查询
+
+GET /my_index/_search?q=field:(a b) //a 或者 b
+
+3、布尔操作
+GET /my_index/_search?q=field:(a AND b) //AND OR NOT  must是+  must_not 是-  用加号一定要encode或者%2B
+
+bady体
+{
+	"query":{
+		"match":{
+			"query":"a b c",
+			"operator":"and"
+			"minimum_should_match":"3"   //满足至少3个一样的  同and用法
+		}
+	}
+}
+
+4、范围查询
+闭区间用[] 开区间用{}
+age:[1 TO 10]  1<=age<=10
+age:[1 TO 10}  1<=age<10
+age:[1 TO ]    age>=1
+age:[* TO 10]  age<=10
+
+age:>=1
+
+
+5、通配符查询
+//? 代表一个字符 *代表0或多个字符
+name:t?m
+name:t*m
+
+
+6、模糊查询（用户输入某个词输错了，纠错）
+name:roam~1   //匹配可以差一个charater的词    比如 foam roams
+q:"name:roam"~1  //允许中间差一个词
+
+
+//以下是json 由baby体的
+7、字段类查询
+全文匹配：match match_phrase 会查询语句进行分词，在去和倒排索引做匹配
+单词匹配：term，terms，range 直接拿着语句去和倒排索引去做匹配
+
+
+8、相关性算分
+TF 词频，单词在该文档出现的次数，越高分数越高
+DF 文档频率，单词出现的文档数
+IDF 逆向文档频率，单词出现的次数越少，相关度越高
+FIeld-length Norm 文档越短，相关性越高
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+一条语句多次查询
 curl -H "Content-Type: application/json" -XPOST "http://localhost:9200/_msearch?pretty" -d '
 {"index" : "bank"}
 { "query": { "match": { "firstname" : "Amber" } } } }
@@ -6,6 +94,3 @@ curl -H "Content-Type: application/json" -XPOST "http://localhost:9200/_msearch?
 { "query": { "match": { "firstname" : "Hattie" } } }
 
 '
-
-
-2、
